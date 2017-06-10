@@ -33,11 +33,16 @@ func (t *tScreen) termioInit() error {
 	var ioc uintptr
 	t.tiosp = &termiosPrivate{}
 
-	if t.in, e = os.OpenFile("/dev/tty", os.O_RDONLY, 0); e != nil {
-		goto failed
-	}
-	if t.out, e = os.OpenFile("/dev/tty", os.O_WRONLY, 0); e != nil {
-		goto failed
+	if t.tty == nil {
+		if t.in, e = os.OpenFile("/dev/tty", os.O_RDONLY, 0); e != nil {
+			goto failed
+		}
+		if t.out, e = os.OpenFile("/dev/tty", os.O_WRONLY, 0); e != nil {
+			goto failed
+		}
+	} else {
+		t.in = t.tty
+		t.out = t.tty
 	}
 
 	tios = uintptr(unsafe.Pointer(t.tiosp))
@@ -87,10 +92,10 @@ func (t *tScreen) termioInit() error {
 	return nil
 
 failed:
-	if t.in != nil {
+	if t.tty == nil && t.in != nil {
 		t.in.Close()
 	}
-	if t.out != nil {
+	if t.tty == nil && t.out != nil {
 		t.out.Close()
 	}
 	return e
@@ -108,9 +113,11 @@ func (t *tScreen) termioFini() {
 		ioc := uintptr(syscall.TCSETS)
 		tios := uintptr(unsafe.Pointer(t.tiosp))
 		syscall.Syscall6(syscall.SYS_IOCTL, fd, ioc, tios, 0, 0, 0)
-		t.out.Close()
+		if t.tty == nil {
+			t.out.Close()
+		}
 	}
-	if t.in != nil {
+	if t.in != nil && t.tty == nil {
 		t.in.Close()
 	}
 }

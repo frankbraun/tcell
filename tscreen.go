@@ -34,11 +34,16 @@ import (
 // $COLUMNS environment variables can be set to the actual window size,
 // otherwise defaults taken from the terminal database are used.
 func NewTerminfoScreen() (Screen, error) {
-	ti, e := LookupTerminfo(os.Getenv("TERM"))
+	return NewTerminfoScreenWithTTY(os.Getenv("TERM"), nil)
+}
+
+// TODO
+func NewTerminfoScreenWithTTY(termEnv string, tty *os.File) (Screen, error) {
+	ti, e := LookupTerminfo(termEnv)
 	if e != nil {
 		return nil, e
 	}
-	t := &tScreen{ti: ti}
+	t := &tScreen{ti: ti, tty: tty}
 
 	t.keyexist = make(map[Key]bool)
 	t.keycodes = make(map[string]*tKeyCode)
@@ -65,6 +70,7 @@ type tKeyCode struct {
 // tScreen represents a screen backed by a terminfo implementation.
 type tScreen struct {
 	ti        *Terminfo
+	tty       *os.File
 	h         int
 	w         int
 	fini      bool
